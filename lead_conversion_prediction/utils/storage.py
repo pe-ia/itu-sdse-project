@@ -30,9 +30,14 @@ def get_processed_data_path(filename):
     os.makedirs(data_dir, exist_ok=True)
     return os.path.join(data_dir, filename)
 
-def save_model(model, filename):
+def save_model(model, filename, model_dir=None):
     """Save a model to the configured models directory."""
-    path = get_model_path(filename)
+    if model_dir:
+        os.makedirs(model_dir, exist_ok=True)
+        path = os.path.join(model_dir, filename)
+    else:
+        path = get_model_path(filename)
+    
     joblib.dump(model, path)
     print(f"Model saved to {path}")
     return path

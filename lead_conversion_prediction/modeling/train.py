@@ -14,6 +14,7 @@ from scipy.stats import uniform, randint
 
 from loguru import logger
 from lead_conversion_prediction.config import MODELS_DIR, REPORTS_DIR, TRAIN_DATA_PATH
+from lead_conversion_prediction.utils.storage import save_model
 
 warnings.filterwarnings('ignore')
 
@@ -31,6 +32,8 @@ def create_dummy_cols(df, col):
 @app.command()
 def main(
     input_path: Path = TRAIN_DATA_PATH,
+    models_dir: Path = MODELS_DIR,
+    reports_dir: Path = REPORTS_DIR,
 ):
     """Model training pipeline."""
     logger.info("Starting model training...")
@@ -110,14 +113,12 @@ def main(
     
     # Save XGBoost model
     xgboost_model = xgb_grid.best_estimator_
-    xgboost_model_path = MODELS_DIR / 'lead_model_xgboost.json'
-    xgboost_model.save_model(str(xgboost_model_path))
-    logger.info(f"XGBoost model saved to {xgboost_model_path}")
+    save_model(xgboost_model, 'lead_model_xgboost.pkl', model_dir=models_dir)
     
     # Store XGBoost results
     xgb_report = classification_report(y_train, y_pred_train_xgb, output_dict=True)
     model_results = {
-        "models/lead_model_xgboost.json": xgb_report
+        "lead_model_xgboost.pkl": xgb_report
     }
     
     # Train Logistic Regression model
@@ -142,23 +143,21 @@ def main(
     logger.info(f"LogReg - Accuracy test: {accuracy_score(y_pred_test_lr, y_test):.4f}")
     
     # Save Logistic Regression model
-    lr_model_path = MODELS_DIR / 'lead_model_lr.pkl'
-    joblib.dump(value=best_lr_model, filename=lr_model_path)
-    logger.info(f"Logistic Regression model saved to {lr_model_path}")
+    save_model(best_lr_model, 'lead_model_lr.pkl', model_dir=models_dir)
     
     # Store LR results
     lr_report = classification_report(y_test, y_pred_test_lr, output_dict=True)
-    model_results["models/lead_model_lr.pkl"] = lr_report
+    model_results["lead_model_lr.pkl"] = lr_report
     
     # Save column list
-    column_list_path = MODELS_DIR / 'columns_list.json'
+    column_list_path = models_dir / 'columns_list.json'
     with open(column_list_path, 'w+') as columns_file:
         columns = {'column_names': list(X_train.columns)}
         json.dump(columns, columns_file)
     logger.info(f"Column list saved to {column_list_path}")
     
     # Save model results
-    model_results_path = REPORTS_DIR / 'model_results.json'
+    model_results_path = reports_dir / 'model_results.json'
     with open(model_results_path, 'w+') as results_file:
         json.dump(model_results, results_file)
     logger.info(f"Model results saved to {model_results_path}")

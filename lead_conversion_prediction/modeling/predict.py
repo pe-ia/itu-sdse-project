@@ -2,8 +2,7 @@
 from pathlib import Path
 import pandas as pd
 import typer
-from xgboost import XGBRFClassifier
-
+import joblib
 from loguru import logger
 from lead_conversion_prediction.config import MODELS_DIR, TEST_X_PATH, TEST_Y_PATH
 
@@ -12,7 +11,7 @@ app = typer.Typer()
 
 @app.command()
 def main(
-    model_path: Path = MODELS_DIR / "lead_model_xgboost.json",
+    model_path: Path = MODELS_DIR / "lead_model_xgboost.pkl",
     features_path: Path = TEST_X_PATH,
     labels_path: Path = TEST_Y_PATH,
 ):
@@ -20,8 +19,7 @@ def main(
     logger.info("Starting model inference...")
     
     # Load the XGBoost model
-    model = XGBRFClassifier()
-    model.load_model(str(model_path))
+    model = joblib.load(model_path)
     logger.info(f"Loaded model from {model_path}")
     
     # Load test data
