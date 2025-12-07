@@ -45,6 +45,16 @@ func (m *ItuSdseProject) Lock(
 		File("requirements.lock")
 }
 
+// CleanData runs data cleaning (outlier removal, missing value handling)
+func (m *ItuSdseProject) CleanData(
+	// +ignore=["venv", ".git", ".dvc", "mlruns", "notebooks", "models", "__pycache__", ".pytest_cache", "dagger", "internal"]
+	source *dagger.Directory,
+) *dagger.Directory {
+	return m.WithDeps(source).
+		WithExec([]string{"python", "-m", "lead_conversion_prediction.dataset"}).
+		Directory("/app")
+}
+
 // PrepareData runs feature engineering (imputation, scaling, encoding)
 func (m *ItuSdseProject) PrepareData(
 	// +ignore=["venv", ".git", ".dvc", "mlruns", "notebooks", "models", "__pycache__", ".pytest_cache", "dagger", "internal"]
@@ -91,13 +101,14 @@ func (m *ItuSdseProject) Predict(
 		WithExec([]string{"python", "-m", "lead_conversion_prediction.modeling.predict"})
 }
 
-// Pipeline runs the full workflow: PrepareData -> Train -> Package -> Upload
+// Pipeline runs the full workflow: CleanData -> PrepareData -> Train -> Package -> Upload
 func (m *ItuSdseProject) Pipeline(
 	// +ignore=["venv", ".git", ".dvc", "mlruns", "notebooks", "models", "__pycache__", ".pytest_cache", "dagger", "internal"]
 	source *dagger.Directory,
 ) *dagger.File {
-	data := m.PrepareData(source)
-	models := m.Train(data)
+	cleaned := m.CleanData(source)
+	prepared := m.PrepareData(cleaned)
+	models := m.Train(prepared)
 	pkg := m.Package(models)
 	return m.Upload(pkg)
 }
